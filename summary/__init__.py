@@ -25,7 +25,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         
         # Get Azure Storage connection details from environment variables
         connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
-        container_name = os.environ.get("SOAP_NOTES_CONTAINER", "soap-notes")
+        container_name = os.environ.get("SOAP_NOTES_CONTAINER", "patient-history")
         
         if not connection_string:
             return func.HttpResponse(
