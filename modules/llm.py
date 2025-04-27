@@ -1,12 +1,13 @@
 # modules/llm.py
 import json
-import os
 import whisperx
 from langchain.chains import LLMChain, ConversationalRetrievalChain
 from langchain.vectorstores import FAISS
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import PromptTemplate, ChatPromptTemplate
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from azure.storage.blob import BlobServiceClient
+from modules.config import get_azure_openai_client
 
 # Import clients from config
 from modules.config import get_azure_openai_client, get_azure_embedding_client
@@ -49,33 +50,79 @@ def create_qa_chain(vectorstore=None, llm=None, memory=None):
         combine_docs_chain_kwargs={"prompt": prompt_template}
     )
 
-def summarize_patient_data(soap_note_json, llm=None):
-    """Summarize patient data from a SOAP note"""
-    if llm is None:
-        llm = get_azure_openai_client()
+def retrieve_soap_note_from_blob(patient_id, connection_string, container_name):
+    """
+    Retrieve a SOAP note JSON file from Azure Blob Storage
+    
+    Args:
+        patient_id: ID of the patient
+        connection_string: Azure Storage connection string
+        container_name: Name of the blob container
         
+    Returns:
+        Tuple of (soap_note_json, error_message)
+    """
+    try:
+        # Create blob service client
+        blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+        
+        # Get container client
+        container_client = blob_service_client.get_container_client(container_name)
+        
+        # Define blob name based on patient ID
+        blob_name = f"soap_note_{patient_id}.json"
+        
+        # Get blob client
+        blob_client = container_client.get_blob_client(blob_name)
+        
+        # Check if blob exists
+        if not blob_client.exists():
+            return None, f"No SOAP note found for patient ID {patient_id}"
+        
+        # Download blob content
+        download_stream = blob_client.download_blob()
+        soap_note_json = json.loads(download_stream.readall().decode('utf-8'))
+        
+        return soap_note_json, None
+    except Exception as e:
+        return None, f"Error retrieving SOAP note: {str(e)}"
+
+def summarize_patient_data(soap_note_json, llm=None):
+    """
+    Summarize patient data from a SOAP note
+    
+    Args:
+        soap_note_json: SOAP note in JSON format
+        llm: LLM client (optional)
+        
+    Returns:
+        Summarized SOAP note
+    """
+    if llm is None:
+        llm = get_azure_openai_client(temperature=0.6, max_tokens=512)
+    
     json_str = json.dumps(soap_note_json, indent=2)
     prompt = f"""
-You are a highly skilled and reliable medical professional assistant. Your task is to summarize the following SOAP note, provided in JSON format, using a standardized bullet-point format.
+    You are a highly skilled and reliable medical professional assistant. Your task is to summarize the following SOAP note, provided in JSON format, using a standardized bullet-point format.
 
-Instructions:
-- For each section (Subjective, Objective, Assessment, Plan), write **one concise bullet point** summarizing the most important, **clinically relevant** information.
-- **Label each bullet clearly** as S (Subjective), O (Objective), A (Assessment), or P (Plan).
-- Use clear, professional language and **complete sentences**.
-- **Do not infer or assume any information** not explicitly mentioned in the SOAP note. If you are uncertain, say "Not specified."
-- If a section is missing, empty, or lacks meaningful content, **omit that bullet point**.
-- Maintain the order: S, O, A, P.
-- Keep each bullet under 40 words for clarity.
+    Instructions:
+    - For each section (Subjective, Objective, Assessment, Plan), write **one concise bullet point** summarizing the most important, **clinically relevant** information.
+    - **Label each bullet clearly** as S (Subjective), O (Objective), A (Assessment), or P (Plan).
+    - Use clear, professional language and **complete sentences**.
+    - **Do not infer or assume any information** not explicitly mentioned in the SOAP note. If you are uncertain, say "Not specified."
+    - If a section is missing, empty, or lacks meaningful content, **omit that bullet point**.
+    - Maintain the order: S, O, A, P.
+    - Keep each bullet under 40 words for clarity.
 
-Strict Output Format (no extra text or explanations):
-S: [Subjective summary]
-O: [Objective summary]
-A: [Assessment summary]
-P: [Plan summary]
+    Strict Output Format (no extra text or explanations):
+    S: [Subjective summary]
+    O: [Objective summary]
+    A: [Assessment summary]
+    P: [Plan summary]
 
-SOAP NOTE (in JSON format):
-{json_str}
-"""
+    SOAP NOTE (in JSON format):
+    {json_str}
+    """
     
     response = llm.predict(prompt)
     return response.strip()
