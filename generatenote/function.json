@@ -6,7 +6,7 @@
         "authLevel": "function",
         "methods": ["post"],
         "name": "req",
-        "route": "qa"
+        "route": "generatenote"
       },
       {
         "type": "http",
