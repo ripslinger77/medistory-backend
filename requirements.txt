@@ -8,3 +8,4 @@ langchain_community
 tiktoken
 azure-storage-blob
 openai
+faiss-cpu
