@@ -6,5 +6,4 @@ azure-functions
 langchain
 langchain_community 
 tiktoken
-faiss-cpu
-whisperx
+azure-storage
