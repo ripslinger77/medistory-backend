@@ -1,7 +1,3 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/azure/functions-action
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-# More info on Python, GitHub Actions, and Azure Functions: https://aka.ms/python-webapps-actions
-
 name: Build and deploy Python project to Azure Function App - medistory-function-app
 
 on:
@@ -12,14 +8,13 @@ on:
 
 env:
   AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' # set this to the path to your web app project, defaults to the repository root
-  PYTHON_VERSION: '3.11' # set this to the python version to use (supports 3.6, 3.7, 3.8)
+  PYTHON_VERSION: '3.11' # set this to the python version to use
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
       contents: read #This is required for actions/checkout
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -35,20 +30,26 @@ jobs:
           source venv/bin/activate
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
-
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt --target=".python_packages/lib/site-packages"
+          
       # Optional: Add step to run tests here
-
+      
       - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
-
+        run: |
+          zip -r release.zip . \
+          --exclude=venv/\* \
+          --exclude=.git\* \
+          --exclude=.github\* \
+          --exclude=__pycache__/\* \
+          --exclude=\*.pyc
+          
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: |
-            release.zip
-            !venv/
+          path: release.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -56,28 +57,24 @@ jobs:
     permissions:
       id-token: write #This is required for requesting the JWT
       contents: read #This is required for actions/checkout
-
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: python-app
-
-      - name: Unzip artifact for deployment
-        run: unzip release.zip     
-        
+      
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_E04DF52A82EA41CBBBE308B354CE2527 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_7BA7C8F1640843AF945FAE0FF00FD40C }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_CF742AC6FD174C3AB3EC4C63129FCE38 }}
-
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_39F578C4BC194298966F6209C6122C69 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_C7EB3897CE7B4E5E95DE381D471EEE19 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_2BEC0D4B05A440DFAEA7BB172F9B7885 }}
+          
       - name: 'Deploy to Azure Functions'
         uses: Azure/functions-action@v1
         id: deploy-to-function
         with:
           app-name: 'medistory-function-app'
           slot-name: 'Production'
-          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-          
+          package: release.zip
+          respect-funcignore: true
