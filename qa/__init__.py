@@ -2,12 +2,14 @@
 import azure.functions as func
 import json
 import logging
+import os
 from modules.llm import (
     initialize_llm, 
     initialize_embeddings, 
     create_vector_store, 
     create_qa_chain, 
-    answer_medical_question
+    answer_medical_question,
+    retrieve_soap_note_from_blob
 )
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
@@ -15,15 +17,41 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     
     try:
         req_body = req.get_json()
-        patient_data = req_body.get('patient_data')
         question = req_body.get('question')
         chat_history = req_body.get('chat_history', [])
         
-        if not patient_data or not question:
+        patient_id = req.params.get('patient_id')
+        
+        if not patient_id:
+            req_body = req.get_json()
+            patient_id = req_body.get('patient_id')
+        
+        if not patient_id or not question:
             return func.HttpResponse(
-                json.dumps({"error": "Please provide patient_data and question"}),
+                json.dumps({"error": "Please provide a patient_id and/or question"}),
                 mimetype="application/json",
                 status_code=400
+            )
+        
+        # Get Azure Storage connection details from environment variables
+        connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
+        container_name = os.environ.get("SOAP_NOTES_CONTAINER", "patient-history")
+        
+        if not connection_string:
+            return func.HttpResponse(
+                json.dumps({"error": "Azure Storage connection string not configured"}),
+                mimetype="application/json",
+                status_code=500
+            )
+        
+        # Retrieve SOAP note from Blob Storage
+        soap_note_json, error = retrieve_soap_note_from_blob(patient_id, connection_string, container_name)
+
+        if error:
+            return func.HttpResponse(
+                json.dumps({"error": error}),
+                mimetype="application/json",
+                status_code=404 if "No SOAP note found" in error else 500
             )
         
         # Initialize LLM and embeddings
@@ -31,7 +59,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         embeddings = initialize_embeddings()
         
         # Create vector store and QA chain
-        vectorstore = create_vector_store(json.dumps(patient_data), embeddings)
+        vectorstore = create_vector_store(json.dumps(soap_note_json), embeddings)
         qa_chain = create_qa_chain(llm, vectorstore)
         
         # Answer the question
