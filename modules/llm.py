@@ -128,27 +128,50 @@ def summarize_patient_data(soap_note_json, llm=None):
     return response.strip()
 
 def answer_medical_question(question, qa_chain, chat_history=None):
-    """Answer a medical question using the QA chain"""
+    """
+    Answer a medical question using the QA chain and return in a structured JSON format
+    
+    Args:
+        question: The medical question to answer
+        qa_chain: The QA chain to use for answering
+        chat_history: Optional chat history (default: None)
+        
+    Returns:
+        A dictionary in the format {"answer": "...", "chat_history": [...]}
+    """
     if chat_history is None:
         chat_history = []
        
+    # Get response from QA chain
     response = qa_chain.invoke({
         "question": question,
         "chat_history": chat_history
     })
     
-    # Extract just the answer text if response is a dictionary
+    # Extract answer from response based on its type
+    answer = ""
     if isinstance(response, dict):
-        # Try common keys where the answer might be stored
+        # Try to find the answer in common response keys
         for key in ["answer", "result", "content", "text", "response"]:
             if key in response:
-                return response[key].strip()
-        
-        # If no known keys, return the whole dictionary as string
-        return str(response).strip()
+                answer = response[key].strip()
+                break
+        # If no known keys found, convert the whole response to string
+        if not answer:
+            answer = str(response).strip()
     else:
-        # If response is already a string or another simple type
-        return str(response).strip()
+        # If response is a string or other simple type
+        answer = str(response).strip()
+    
+    # Update chat history with the new Q&A pair
+    updated_chat_history = chat_history.copy()
+    updated_chat_history.append((question, answer))
+    
+    # Return in the requested JSON format
+    return {
+        "answer": answer,
+        "chat_history": updated_chat_history
+    }
 
 # Audio processing functions adapted from AUDIO1.py
 def transcribe_audio(audio_path, device="cpu"):
