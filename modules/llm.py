@@ -1,6 +1,6 @@
 # modules/llm.py
 import json
-# import whisperx
+import whisperx
 from langchain.chains import LLMChain, ConversationalRetrievalChain
 from langchain.vectorstores import FAISS
 from langchain.memory import ConversationBufferMemory
