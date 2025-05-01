@@ -9,3 +9,4 @@ tiktoken
 azure-storage-blob
 openai
 faiss-cpu
+whisperx
