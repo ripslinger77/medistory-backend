@@ -131,13 +131,24 @@ def answer_medical_question(question, qa_chain, chat_history=None):
     """Answer a medical question using the QA chain"""
     if chat_history is None:
         chat_history = []
-        
+       
     response = qa_chain.invoke({
         "question": question,
         "chat_history": chat_history
     })
     
-    return response.strip()
+    # Extract just the answer text if response is a dictionary
+    if isinstance(response, dict):
+        # Try common keys where the answer might be stored
+        for key in ["answer", "result", "content", "text", "response"]:
+            if key in response:
+                return response[key].strip()
+        
+        # If no known keys, return the whole dictionary as string
+        return str(response).strip()
+    else:
+        # If response is already a string or another simple type
+        return str(response).strip()
 
 # Audio processing functions adapted from AUDIO1.py
 def transcribe_audio(audio_path, device="cpu"):
