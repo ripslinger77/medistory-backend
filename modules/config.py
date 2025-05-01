@@ -27,19 +27,19 @@ if not AZURE_OPENAI_ENDPOINT:
 def get_azure_openai_client(temperature=0.7, max_tokens=512):
     """
     Returns an initialized Azure OpenAI client
-    
+   
     Args:
         temperature: Controls randomness in responses (0.0 to 1.0)
         max_tokens: Maximum number of tokens to generate
-        
+       
     Returns:
         An initialized AzureChatOpenAI client
     """
     return AzureChatOpenAI(
-        openai_api_key=AZURE_OPENAI_API_KEY,
-        openai_api_base=AZURE_OPENAI_ENDPOINT,
-        deployment_name=AZURE_OPENAI_DEPLOYMENT_NAME,
-        openai_api_version=AZURE_OPENAI_API_VERSION,
+        api_key=AZURE_OPENAI_API_KEY,
+        azure_endpoint=AZURE_OPENAI_ENDPOINT,
+        azure_deployment=AZURE_OPENAI_DEPLOYMENT_NAME,
+        api_version=AZURE_OPENAI_API_VERSION,
         temperature=temperature,
         max_tokens=max_tokens
     )
