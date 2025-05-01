@@ -6,4 +6,4 @@ azure-functions
 langchain
 langchain_community 
 tiktoken
-azure-storage
+azure-storage-blob
