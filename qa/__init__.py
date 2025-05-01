@@ -53,12 +53,12 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             )
         
         # Initialize LLM and embeddings
-        llm = initialize_llm()
-        embeddings = initialize_embeddings()
+        # llm = initialize_llm()
+        # embeddings = initialize_embeddings()
         
         # Create vector store and QA chain
-        vectorstore = create_vector_store(json.dumps(soap_note_json), embeddings)
-        qa_chain = create_qa_chain(llm, vectorstore)
+        vectorstore = create_vector_store(text_content= json.dumps(soap_note_json))
+        qa_chain = create_qa_chain(vectorstore= vectorstore)
         
         # Answer the question
         answer = answer_medical_question(question, qa_chain, chat_history)
