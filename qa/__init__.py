@@ -4,8 +4,6 @@ import json
 import logging
 import os
 from modules.llm import (
-    initialize_llm, 
-    initialize_embeddings, 
     create_vector_store, 
     create_qa_chain, 
     answer_medical_question,
