@@ -61,10 +61,10 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         qa_chain = create_qa_chain(vectorstore= vectorstore)
         
         # Answer the question
-        answer = answer_medical_question(question, qa_chain, chat_history)
+        response = answer_medical_question(question, qa_chain, chat_history)
         
         return func.HttpResponse(
-            json.dumps({"answer": answer}),
+            json.dumps(response),
             mimetype="application/json"
         )
         

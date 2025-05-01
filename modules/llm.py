@@ -137,7 +137,7 @@ def answer_medical_question(question, qa_chain, chat_history=None):
         "chat_history": chat_history
     })
     
-    return response["answer"].strip()
+    return response
 
 # Audio processing functions adapted from AUDIO1.py
 def transcribe_audio(audio_path, device="cpu"):
