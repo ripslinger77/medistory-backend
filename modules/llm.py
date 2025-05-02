@@ -259,3 +259,40 @@ def generate_soap_from_transcript(transcript, llm=None):
     soap_note = chain.run({"transcript": transcript})
     
     return soap_note
+
+
+def save_soap_note_to_blob(patient_id, soap_note, connection_string, container_name):
+    """
+    Save generated SOAP note to Azure Blob Storage in a 'generated-note' folder.
+    
+    Args:
+        patient_id: ID of the patient
+        soap_note: SOAP note text (string or dict)
+        connection_string: Azure Storage connection string
+        container_name: Name of the blob container
+        
+    Returns:
+        Tuple (True, None) if successful, or (False, error_message)
+    """
+    try:
+        # Convert SOAP note to JSON string if it's a dictionary
+        if isinstance(soap_note, dict):
+            soap_note_data = json.dumps(soap_note, indent=2)
+        else:
+            soap_note_data = soap_note
+        
+        # Create blob service client
+        blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+        container_client = blob_service_client.get_container_client(container_name)
+
+        # Define blob name in virtual folder
+        blob_name = f"generated-note/soap_note_{patient_id}.json"
+        blob_client = container_client.get_blob_client(blob_name)
+
+        # Upload the SOAP note
+        blob_client.upload_blob(soap_note_data, overwrite=True)
+
+        return True, None
+    except Exception as e:
+        return False, f"Error saving SOAP note: {str(e)}"
+    

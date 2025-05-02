@@ -3,7 +3,7 @@ import azure.functions as func
 import json
 import logging
 import os
-from modules.llm import generate_soap_from_transcript, retrieve_transcript_from_blob
+from modules.llm import generate_soap_from_transcript, retrieve_transcript_from_blob, save_soap_note_to_blob
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Audio2Notes function (Blob Transcript to SOAP) processed a request.')
@@ -50,6 +50,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
         # Generate SOAP note
         soap_note = generate_soap_from_transcript(transcript)
+
+        # Save generated SOAP note
+        success, save_error = save_soap_note_to_blob(patient_id, soap_note, connection_string, container_name)
+        if not success:
+            logging.warning(f"SOAP note was generated but failed to save: {save_error}")
 
         # Return results
         return func.HttpResponse(
