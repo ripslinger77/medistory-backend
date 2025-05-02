@@ -2,53 +2,56 @@
 import azure.functions as func
 import json
 import logging
-import os
-import tempfile
-from modules.llm import transcribe_audio, generate_soap_from_transcript
+from modules.llm import generate_soap_from_transcript, retrieve_transcript_from_blob
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Audio2Notes function processed a request.')
+    logging.info('Audio2Notes function (Blob Transcript to SOAP) processed a request.')
     
     try:
-        # Check if there's an audio file in the request
-        audio_file = req.files.get('audio')
-        
-        if not audio_file:
+        # Parse JSON body
+        try:
+            req_body = req.get_json()
+        except ValueError:
             return func.HttpResponse(
-                json.dumps({"error": "Please upload an audio file"}),
+                json.dumps({"error": "Invalid JSON body."}),
                 mimetype="application/json",
                 status_code=400
             )
-        
-        # Create a temporary directory to store files
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Save the uploaded audio file to the temp directory
-            audio_path = os.path.join(temp_dir, "audio_file.mp3")
-            with open(audio_path, "wb") as f:
-                f.write(audio_file.read())
-            
-            # Process audio to transcript
-            transcript = transcribe_audio(audio_path, device="cpu")
-            
-            if transcript is None:
-                return func.HttpResponse(
-                    json.dumps({"error": "Failed to transcribe audio file"}),
-                    mimetype="application/json",
-                    status_code=500
-                )
-            
-            # Generate SOAP note from transcript
-            soap_note = generate_soap_from_transcript(transcript)
-            
-            # Return the results
+
+        # Required inputs
+        patient_id = req_body.get("patient_id")
+        connection_string = req_body.get("connection_string")
+        container_name = req_body.get("container_name")
+
+        if not all([patient_id, connection_string, container_name]):
             return func.HttpResponse(
-                json.dumps({
-                    "transcript": transcript,
-                    "soap_note": soap_note
-                }),
-                mimetype="application/json"
+                json.dumps({"error": "Missing one or more required fields: 'patient_id', 'connection_string', 'container_name'."}),
+                mimetype="application/json",
+                status_code=400
             )
-        
+
+        # Retrieve transcript from blob
+        transcript, error = retrieve_transcript_from_blob(patient_id, connection_string, container_name)
+        if error:
+            return func.HttpResponse(
+                json.dumps({"error": error}),
+                mimetype="application/json",
+                status_code=404
+            )
+
+        # Generate SOAP note
+        soap_note = generate_soap_from_transcript(transcript)
+
+        # Return results
+        return func.HttpResponse(
+            json.dumps({
+                "patient_id": patient_id,
+                "transcript": transcript,
+                "soap_note": soap_note
+            }),
+            mimetype="application/json"
+        )
+
     except Exception as e:
         logging.error(f"Error in Audio2Notes function: {str(e)}")
         return func.HttpResponse(

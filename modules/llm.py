@@ -1,6 +1,5 @@
 # modules/llm.py
 import json
-import whisperx
 from langchain.chains import LLMChain, ConversationalRetrievalChain
 from langchain.vectorstores import FAISS
 from langchain.memory import ConversationBufferMemory
@@ -173,46 +172,43 @@ def answer_medical_question(question, qa_chain, chat_history=None):
         "chat_history": updated_chat_history
     }
 
-# Audio processing functions adapted from AUDIO1.py
-def transcribe_audio(audio_path, device="cpu"):
+def retrieve_transcript_from_blob(patient_id, connection_string, container_name):
     """
-    Transcribe audio file and assign speaker roles
-    
+    Retrieve a transcript TXT file from Azure Blob Storage
+
     Args:
-        audio_path: Path to the audio file
-        device: Device to use for processing (cpu or cuda)
-        
+        patient_id: ID of the patient
+        connection_string: Azure Storage connection string
+        container_name: Name of the blob container
+
     Returns:
-        Full transcript with speaker roles
+        Tuple of (transcript_text, error_message)
     """
     try:
-        print("Transcribing audio...")
-        model = whisperx.load_model("medium.en", device=device, compute_type="float32")
-        result = model.transcribe(audio_path)
+        # Create blob service client
+        blob_service_client = BlobServiceClient.from_connection_string(connection_string)
         
-        # Align for word-level accuracy
-        model_a, metadata = whisperx.load_align_model(language_code=result["language"], device=device)
-        aligned = whisperx.align(result["segments"], model_a, metadata, audio_path, device=device)
+        # Get container client
+        container_client = blob_service_client.get_container_client(container_name)
         
-        # Assign speaker roles based on speaking order
-        speaker_ids = list({seg.get("speaker", "speaker_0") for seg in aligned["segments"]})
-        speaker_map = {
-            speaker_ids[0]: "Doctor",
-            speaker_ids[1] if len(speaker_ids) > 1 else speaker_ids[0]: "Patient"
-        }
+        # Define blob name based on patient ID
+        blob_name = f"transcript_{patient_id}.txt"
         
-        # Apply role mapping
-        for seg in aligned["segments"]:
-            speaker = seg.get("speaker", "speaker_0")
-            seg["role"] = speaker_map.get(speaker, "Unknown")
+        # Get blob client
+        blob_client = container_client.get_blob_client(blob_name)
         
-        # Combine into a readable transcript
-        full_transcript = "\n".join([f"{seg['role']}: {seg['text']}" for seg in aligned["segments"]])
+        # Check if blob exists
+        if not blob_client.exists():
+            return None, f"No transcript found for patient ID {patient_id}"
         
-        return full_transcript
+        # Download blob content
+        download_stream = blob_client.download_blob()
+        transcript_text = download_stream.readall().decode('utf-8')
+        
+        return transcript_text, None
     except Exception as e:
-        print(f"Error in transcription: {str(e)}")
-        return None
+        return None, f"Error retrieving transcript: {str(e)}"
+
 
 def generate_soap_from_transcript(transcript, llm=None):
     """
@@ -263,23 +259,3 @@ def generate_soap_from_transcript(transcript, llm=None):
     soap_note = chain.run({"transcript": transcript})
     
     return soap_note
-
-def process_audio_to_soap(audio_path, output_dir=None, device="cpu"):
-    """
-    Complete pipeline to process audio to SOAP note
-    
-    Args:
-        audio_path: Path to the audio file
-        output_dir: Directory to save output files (optional)
-        device: Device to use for processing (cpu or cuda)
-        
-    Returns:
-        Tuple of (transcript, soap_note)
-    """
-    # Get transcript
-    transcript = transcribe_audio(audio_path, device=device)
-    
-    if transcript is None:
-        return None, None
-    
-    # Save
