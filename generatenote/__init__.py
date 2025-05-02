@@ -31,6 +31,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         # Get Azure Storage connection details from environment variables
         connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
         container_name = os.environ.get("TRANSCRIPT_CONTAINER", "conversation-transcripts")
+        save_container_name = os.environ.get("GEN_NOTE_CONTAINER", "generated-notes")
 
         if not connection_string:
             return func.HttpResponse(
@@ -52,7 +53,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         soap_note = generate_soap_from_transcript(transcript)
 
         # Save generated SOAP note
-        success, save_error = save_soap_note_to_blob(patient_id, soap_note, connection_string, container_name)
+        success, save_error = save_soap_note_to_blob(patient_id, soap_note, connection_string, save_container_name)
         if not success:
             logging.warning(f"SOAP note was generated but failed to save: {save_error}")
 
@@ -60,7 +61,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(
             json.dumps({
                 "patient_id": patient_id,
-                "transcript": transcript,
                 "soap_note": soap_note
             }),
             mimetype="application/json"
