@@ -1,7 +1,8 @@
-# audio2notes/__init__.py
+# generatenote/__init__.py
 import azure.functions as func
 import json
 import logging
+import os
 from modules.llm import generate_soap_from_transcript, retrieve_transcript_from_blob
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
@@ -18,16 +19,24 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 status_code=400
             )
 
-        # Required inputs
+        # Required input
         patient_id = req_body.get("patient_id")
-        connection_string = req_body.get("connection_string")
-        container_name = req_body.get("container_name")
-
-        if not all([patient_id, connection_string, container_name]):
+        if not patient_id:
             return func.HttpResponse(
-                json.dumps({"error": "Missing one or more required fields: 'patient_id', 'connection_string', 'container_name'."}),
+                json.dumps({"error": "Missing required field: 'patient_id'."}),
                 mimetype="application/json",
                 status_code=400
+            )
+
+        # Get Azure Storage connection details from environment variables
+        connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
+        container_name = os.environ.get("TRANSCRIPT_CONTAINER", "conversation-transcripts")
+
+        if not connection_string:
+            return func.HttpResponse(
+                json.dumps({"error": "Missing environment variable: AZURE_STORAGE_CONNECTION_STRING"}),
+                mimetype="application/json",
+                status_code=500
             )
 
         # Retrieve transcript from blob
