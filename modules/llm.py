@@ -261,9 +261,12 @@ def generate_soap_from_transcript(transcript, llm=None):
     soap_note = chain.run({"transcript": transcript})
 
     # Clean output
-    if soap_note.startswith("'''json"):
-        soap_note = soap_note[len("'''json"):].lstrip()
-    if soap_note.endswith("'''"):
+    if soap_note.startswith("```json"):
+        soap_note = soap_note[len("```json"):].lstrip()
+    elif soap_note.startswith("```"):
+        soap_note = soap_note[len("```"):].lstrip()
+
+    if soap_note.endswith("```"):
         soap_note = soap_note[:-3].rstrip()
     
     return soap_note
