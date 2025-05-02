@@ -102,22 +102,55 @@ def summarize_patient_data(soap_note_json, llm=None):
     
     json_str = json.dumps(soap_note_json, indent=2)
     prompt = f"""
-    You are a highly skilled and reliable medical professional assistant. Your task is to summarize the following SOAP note, provided in JSON format, using a standardized bullet-point format.
+    You are a clinical documentation specialist. Given the following SOAP note, generate a concise summary of the patient's history using clear bullet points. Organize the summary under the following consistent headings:
 
-    Instructions:
-    - For each section (Subjective, Objective, Assessment, Plan), write **one concise bullet point** summarizing the most important, **clinically relevant** information.
-    - **Label each bullet clearly** as S (Subjective), O (Objective), A (Assessment), or P (Plan).
-    - Use clear, professional language and **complete sentences**.
-    - **Do not infer or assume any information** not explicitly mentioned in the SOAP note. If you are uncertain, say "Not specified."
-    - If a section is missing, empty, or lacks meaningful content, **omit that bullet point**.
-    - Maintain the order: S, O, A, P.
-    - Keep each bullet under 40 words for clarity.
+    Chief Complaint
 
-    Strict Output Format (no extra text or explanations):
-    S: [Subjective summary]
-    O: [Objective summary]
-    A: [Assessment summary]
-    P: [Plan summary]
+    History of Present Illness
+
+    Past Medical History
+
+    Current Medications
+
+    Allergies
+
+    Family History
+
+    Social History
+
+    Review of Systems (if available)
+
+For each section, extract only relevant and significant details from the SOAP note. Use professional medical terminology and keep each bullet point brief and factual. Do not include information from the Objective, Assessment, or Plan sections unless it directly pertains to the patient’s history.
+
+Format your output as shown below:
+
+text
+- Chief Complaint:
+  - [Bullet point(s) summarizing the main reason for the visit]
+
+- History of Present Illness:
+  - [Bullet point(s) summarizing symptom onset, duration, characteristics, aggravating/relieving factors, etc.]
+
+- Past Medical History:
+  - [Bullet point(s) listing relevant medical, surgical, or psychiatric history]
+
+- Current Medications:
+  - [Bullet point(s) listing current medications and dosages]
+
+- Allergies:
+  - [Bullet point(s) listing medication or other allergies]
+
+- Family History:
+  - [Bullet point(s) on relevant family health conditions]
+
+- Social History:
+  - [Bullet point(s) on lifestyle factors such as smoking, alcohol, drug use, occupation, living situation]
+
+- Review of Systems:
+  - [Bullet point(s) summarizing pertinent positives and negatives from the review of systems]
+
+If any section is not mentioned in the SOAP note, include the heading and write "Not reported."
+Do not include any fake information.
 
     SOAP NOTE (in JSON format):
     {json_str}
@@ -253,8 +286,6 @@ def generate_soap_from_transcript(transcript, llm=None):
     - Assessment:
     
     - Plan:
-                                              
-    Format the output as a structured list or dictionary for easy conversion to JSON.
     """)
     
     chain = LLMChain(llm=llm, prompt=prompt)
