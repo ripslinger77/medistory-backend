@@ -6,7 +6,7 @@ import os
 from modules.llm import generate_soap_from_transcript, retrieve_transcript_from_blob, save_soap_note_to_blob
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Audio2Notes function (Blob Transcript to SOAP) processed a request.')
+    logging.info('generate note function processed a request.')
     
     try:
         # Parse JSON body
