@@ -253,6 +253,8 @@ def generate_soap_from_transcript(transcript, llm=None):
     - Assessment:
     
     - Plan:
+                                              
+    Format the output as a structured list or dictionary for easy conversion to JSON.
     """)
     
     chain = LLMChain(llm=llm, prompt=prompt)
