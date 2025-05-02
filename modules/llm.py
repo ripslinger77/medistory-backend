@@ -286,7 +286,7 @@ def save_soap_note_to_blob(patient_id, soap_note, connection_string, container_n
         container_client = blob_service_client.get_container_client(container_name)
 
         # Define blob name in virtual folder
-        blob_name = f"generated-note/soap_note_{patient_id}.json"
+        blob_name = f"generated-notes/soap_note_{patient_id}.json"
         blob_client = container_client.get_blob_client(blob_name)
 
         # Upload the SOAP note
